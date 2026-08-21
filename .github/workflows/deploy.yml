@@ -47,8 +47,8 @@ jobs:
             echo "▶ Indo para o projeto real de produção..."
             cd /docker/saas-control-center
 
-            echo "▶ Buildando imagem nova (build context = GitHub main)..."
-            docker compose build scc-app
+            echo "▶ Buildando imagem nova (build context = GitHub main, --no-cache obrigatório: build context remoto via git URL reusa o clone antigo em cache e nunca pega commit novo sem isso — achado ao vivo em 21/08/2026)..."
+            docker compose build --no-cache scc-app
 
             echo "▶ Recriando container via docker compose (preserva labels Traefik + rede proxy)..."
             docker compose up -d --force-recreate scc-app
