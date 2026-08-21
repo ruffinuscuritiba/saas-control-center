@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Crown, LayoutDashboard, Users, CreditCard, Blocks, LifeBuoy, ScrollText,
   Search, Loader2, Ban, Play, KeyRound, ExternalLink, X, AlertTriangle,
+  Wrench, Shirt, UtensilsCrossed, Sparkles, Briefcase, Settings2, Lock,
 } from 'lucide-react';
 import {
   SYSTEM_LABEL, SYSTEM_COLOR, STATUS_LABEL, STATUS_COLOR,
@@ -13,13 +14,54 @@ import {
 const TOKEN_KEY = 'scc_token';
 const SYSTEMS: SystemKey[] = ['FOOD', 'SAUDE_BELEZA', 'OFICINA', 'MODA'];
 
-const NAV = [
+type ViewKey = 'dashboard' | 'clientes' | 'modulos';
+
+const NAV: { key: ViewKey; label: string; icon: typeof LayoutDashboard; enabled: boolean }[] = [
   { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, enabled: true },
-  { key: 'clientes', label: 'Gestão de Clientes', icon: Users, enabled: true },
-  { key: 'planos', label: 'Planos & Cobrança', icon: CreditCard, enabled: false },
-  { key: 'modulos', label: 'Configuração de Módulos', icon: Blocks, enabled: false },
-  { key: 'suporte', label: 'Suporte', icon: LifeBuoy, enabled: false },
-  { key: 'logs', label: 'Logs do Sistema', icon: ScrollText, enabled: false },
+  { key: 'clientes', label: 'Gestão de Clientes (Tenants)', icon: Users, enabled: true },
+  { key: 'modulos', label: 'Configuração de Módulos', icon: Blocks, enabled: true },
+];
+
+const DISABLED_NAV = [
+  { key: 'planos', label: 'Planos & Cobrança', icon: CreditCard },
+  { key: 'suporte', label: 'Suporte', icon: LifeBuoy },
+  { key: 'logs', label: 'Logs do Sistema', icon: ScrollText },
+];
+
+// ─── Módulos por nicho ───────────────────────────────────────────────────
+// 4 nichos ligados a sistema real (adapters.ts já autentica e agrega tenants
+// deles); "Serviços/Consultoria" ainda não tem sistema por trás — fica
+// marcado como "Em breve", não é fingido como se já existisse.
+interface NicheModule {
+  key: SystemKey | 'SERVICOS';
+  label: string;
+  color: string;
+  icon: typeof Wrench;
+  features: string[];
+  live: boolean;
+}
+
+const NICHE_MODULES: NicheModule[] = [
+  {
+    key: 'OFICINA', label: 'Mecânica', color: '#3b82f6', icon: Wrench, live: true,
+    features: ['Ordem de Serviço', 'Checklist de Entrada', 'Peças', 'Histórico Veicular'],
+  },
+  {
+    key: 'MODA', label: 'Loja de Roupas', color: '#ef4444', icon: Shirt, live: true,
+    features: ['Controle de Grade (Cor/Tamanho)', 'PDV', 'Estoque de Roupas', 'Vendedores'],
+  },
+  {
+    key: 'FOOD', label: 'Food Service', color: '#f97316', icon: UtensilsCrossed, live: true,
+    features: ['KDS', 'Comandas/Mesas', 'Pedidos', 'Sabor/Complementos'],
+  },
+  {
+    key: 'SAUDE_BELEZA', label: 'Clínica de Estética', color: '#a855f7', icon: Sparkles, live: true,
+    features: ['Agenda', 'Anamnese', 'Sessões/Pacotes', 'Profissionais'],
+  },
+  {
+    key: 'SERVICOS', label: 'Serviços / Consultoria', color: '#22c55e', icon: Briefcase, live: false,
+    features: ['Gestão de Projetos', 'Horas', 'Relatórios', 'Contratos'],
+  },
 ];
 
 function fmtDate(iso: string | null): string {
@@ -33,6 +75,8 @@ function fmtBRL(n: number): string {
 export default function DashboardPage() {
   const [token, setToken] = useState<string | null>(null);
   const [checked, setChecked] = useState(false);
+  const [view, setView] = useState<ViewKey>('dashboard');
+  const [moduleDetail, setModuleDetail] = useState<NicheModule | null>(null);
 
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [errors, setErrors] = useState<{ system: SystemKey; message: string }[]>([]);
@@ -185,17 +229,26 @@ export default function DashboardPage() {
         </div>
         <nav className="flex-1 px-3 py-4 space-y-1">
           {NAV.map((item) => (
-            <button key={item.key} disabled={!item.enabled}
+            <button key={item.key} onClick={() => setView(item.key)}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors text-left ${
-                item.key === 'dashboard' || item.key === 'clientes'
+                view === item.key
                   ? 'bg-violet-600/15 text-violet-300'
-                  : 'text-gray-500 cursor-not-allowed'
+                  : 'text-gray-400 hover:text-white hover:bg-white/5'
               }`}>
               <item.icon className="w-4 h-4 shrink-0" />
               {item.label}
-              {!item.enabled && <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-gray-500">em breve</span>}
             </button>
           ))}
+          <div className="pt-2 mt-2 border-t border-white/5 space-y-1">
+            {DISABLED_NAV.map((item) => (
+              <button key={item.key} disabled
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-left text-gray-500 cursor-not-allowed">
+                <item.icon className="w-4 h-4 shrink-0" />
+                {item.label}
+                <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-gray-500">em breve</span>
+              </button>
+            ))}
+          </div>
         </nav>
         <div className="p-3 border-t border-white/10">
           <button onClick={handleLogout} className="w-full text-sm text-gray-400 hover:text-white transition-colors py-2">
@@ -208,15 +261,66 @@ export default function DashboardPage() {
       <div className="flex-1 flex flex-col min-w-0">
         {/* Topbar */}
         <div className="flex items-center gap-4 px-8 py-5 border-b border-white/10">
-          <h1 className="text-lg font-bold">Visão Geral do SaaS</h1>
-          <div className="flex-1 flex items-center gap-2 max-w-md px-3 py-2 rounded-xl bg-white/5 border border-white/10">
-            <Search className="w-4 h-4 text-gray-500 shrink-0" />
-            <input value={search} onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar empresa, nicho ou e-mail do dono..."
-              className="flex-1 bg-transparent text-sm outline-none placeholder:text-gray-500" />
-          </div>
+          <h1 className="text-lg font-bold">
+            {view === 'modulos' ? 'Configuração de Módulos' : 'Visão Geral do SaaS'}
+          </h1>
+          {view !== 'modulos' && (
+            <div className="flex-1 flex items-center gap-2 max-w-md px-3 py-2 rounded-xl bg-white/5 border border-white/10">
+              <Search className="w-4 h-4 text-gray-500 shrink-0" />
+              <input value={search} onChange={(e) => setSearch(e.target.value)}
+                placeholder="Buscar empresa, nicho ou e-mail do dono..."
+                className="flex-1 bg-transparent text-sm outline-none placeholder:text-gray-500" />
+            </div>
+          )}
         </div>
 
+        {view === 'modulos' ? (
+          <div className="flex-1 overflow-y-auto px-8 py-6">
+            <p className="text-sm text-gray-400 mb-6 max-w-2xl">
+              Cada card representa um nicho da plataforma. Os 4 com sistema próprio já
+              agregam tenants reais no Dashboard; Serviços/Consultoria ainda não tem um
+              sistema por trás — aparece aqui como próximo passo, não como módulo ativo.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              {NICHE_MODULES.map((m) => (
+                <div key={m.key} className="rounded-2xl p-5 border flex flex-col"
+                  style={{ background: `${m.color}0d`, borderColor: `${m.color}33` }}>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${m.color}22` }}>
+                      <m.icon className="w-5 h-5" style={{ color: m.color }} />
+                    </div>
+                    {m.live ? (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: `${m.color}22`, color: m.color }}>
+                        ATIVO
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/5 text-gray-500 flex items-center gap-1">
+                        <Lock className="w-2.5 h-2.5" /> EM BREVE
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="font-bold mb-3" style={{ color: m.color }}>{m.label}</h3>
+                  <ul className="space-y-1.5 mb-5 flex-1">
+                    {m.features.map((f) => (
+                      <li key={f} className="text-xs text-gray-400 flex items-center gap-2">
+                        <span className="w-1 h-1 rounded-full shrink-0" style={{ background: m.color }} />
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    onClick={() => m.live && setModuleDetail(m)}
+                    disabled={!m.live}
+                    className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={{ background: `${m.color}22`, color: m.color }}
+                  >
+                    <Settings2 className="w-3.5 h-3.5" /> Configurar Módulo
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
         <div className="flex-1 overflow-y-auto px-8 py-6">
           {errors.length > 0 && (
             <div className="mb-6 rounded-xl p-4 bg-amber-500/10 border border-amber-500/20 flex items-start gap-3">
@@ -322,6 +426,7 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
+        )}
       </div>
 
       {/* Detail drawer */}
@@ -392,6 +497,42 @@ export default function DashboardPage() {
                 </button>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Module detail modal */}
+      {moduleDetail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setModuleDetail(null)}>
+          <div className="w-full max-w-sm rounded-2xl p-6 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: `${moduleDetail.color}22` }}>
+                  <moduleDetail.icon className="w-4.5 h-4.5" style={{ color: moduleDetail.color }} />
+                </div>
+                <h2 className="font-bold">{moduleDetail.label}</h2>
+              </div>
+              <button onClick={() => setModuleDetail(null)} className="text-gray-400 hover:text-white"><X className="w-5 h-5" /></button>
+            </div>
+            <p className="text-xs text-gray-500 mb-4">
+              Recursos deste nicho — gerenciados dentro do próprio sistema{moduleDetail.key !== 'SERVICOS' ? ` (${SYSTEM_LABEL[moduleDetail.key as SystemKey]})` : ''}.
+              Feature flags globais cross-sistema ainda não existem aqui — este painel hoje é informativo.
+            </p>
+            <ul className="space-y-2 mb-5">
+              {moduleDetail.features.map((f) => (
+                <li key={f} className="text-sm flex items-center gap-2.5 px-3 py-2 rounded-lg" style={{ background: `${moduleDetail.color}0d` }}>
+                  <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: moduleDetail.color }} />
+                  {f}
+                </li>
+              ))}
+            </ul>
+            <button
+              onClick={() => { setModuleDetail(null); setView('clientes'); setSystemFilter(moduleDetail.key as SystemKey); }}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold text-white transition-colors"
+              style={{ background: moduleDetail.color }}
+            >
+              Ver tenants deste nicho
+            </button>
           </div>
         </div>
       )}
