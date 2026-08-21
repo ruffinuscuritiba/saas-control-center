@@ -139,9 +139,19 @@ export default function DashboardPage() {
     blocked: tenants.filter((t) => t.status === 'BLOCKED' || t.status === 'PAST_DUE').length,
   }), [tenants]);
 
-  const perSystem = useMemo(() => {
-    return SYSTEMS.map((s) => ({ system: s, count: tenants.filter((t) => t.system === s).length }));
+  // MRR real — soma direto de Tenant.monthlyRevenue (null quando o sistema de
+  // origem ainda não calcula receita por tenant, ver lib/types.ts). Nunca um
+  // número fabricado: se ninguém tem monthlyRevenue, o total fica 0 mesmo.
+  const mrr = useMemo(() => {
+    const bySystem = SYSTEMS.map((s) => ({
+      system: s,
+      value: tenants.filter((t) => t.system === s).reduce((sum, t) => sum + (t.monthlyRevenue ?? 0), 0),
+    }));
+    return { total: bySystem.reduce((sum, s) => sum + s.value, 0), bySystem };
   }, [tenants]);
+
+  // Alerta de faturamento = loja realmente em atraso (PAST_DUE), não estimativa.
+  const billingAlerts = useMemo(() => tenants.filter((t) => t.status === 'PAST_DUE'), [tenants]);
 
   async function handleToggleBlock(t: Tenant) {
     if (!token) return;
@@ -262,7 +272,7 @@ export default function DashboardPage() {
         {/* Topbar */}
         <div className="flex items-center gap-4 px-8 py-5 border-b border-white/10">
           <h1 className="text-lg font-bold">
-            {view === 'modulos' ? 'Configuração de Módulos' : 'Visão Geral do SaaS'}
+            {view === 'modulos' ? 'Configuração de Módulos' : 'Dashboard'}
           </h1>
           {view !== 'modulos' && (
             <div className="flex-1 flex items-center gap-2 max-w-md px-3 py-2 rounded-xl bg-white/5 border border-white/10">
@@ -335,96 +345,187 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* KPI cards */}
-          <div className="grid grid-cols-4 gap-4 mb-6">
-            <KpiCard label="Total de Lojas" value={kpis.total} />
-            <KpiCard label="Ativas" value={kpis.active} color="#34d399" />
-            <KpiCard label="Em Trial" value={kpis.trial} color="#a78bfa" />
-            <KpiCard label="Bloqueadas / Em Atraso" value={kpis.blocked} color="#ef4444" />
-          </div>
+          <div className="flex flex-col xl:flex-row gap-6 items-start">
+            {/* ── Conteúdo Principal (Esquerda/Centro) ─────────────────────── */}
+            <div className="flex-1 min-w-0 w-full">
+              {systemFilter && (
+                <button onClick={() => setSystemFilter(null)}
+                  className="mb-4 text-xs font-medium px-3 py-1.5 rounded-full inline-flex items-center gap-1.5 transition-colors"
+                  style={{ background: `${SYSTEM_COLOR[systemFilter]}22`, color: SYSTEM_COLOR[systemFilter] }}>
+                  Filtrando por {SYSTEM_LABEL[systemFilter]} <X className="w-3 h-3" />
+                </button>
+              )}
 
-          {/* Niche cards */}
-          <div className="grid grid-cols-4 gap-4 mb-8">
-            {perSystem.map(({ system, count }) => (
-              <button key={system} onClick={() => setSystemFilter(systemFilter === system ? null : system)}
-                className="rounded-2xl p-4 text-left transition-all border"
-                style={{
-                  background: systemFilter === system ? `${SYSTEM_COLOR[system]}15` : 'var(--surface)',
-                  borderColor: systemFilter === system ? SYSTEM_COLOR[system] : 'var(--border)',
-                }}>
-                <p className="text-xs font-bold uppercase tracking-wide mb-1" style={{ color: SYSTEM_COLOR[system] }}>
-                  {SYSTEM_LABEL[system]}
+              {/* Table */}
+              {loading ? (
+                <div className="flex items-center justify-center py-16">
+                  <Loader2 className="w-6 h-6 animate-spin text-violet-400" />
+                </div>
+              ) : (
+                <div className="rounded-2xl overflow-hidden border border-white/10 mb-8" style={{ background: 'var(--surface)' }}>
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-white/10 text-left text-gray-400">
+                        <th className="px-5 py-3 font-medium">Empresa</th>
+                        <th className="px-5 py-3 font-medium">Nicho</th>
+                        <th className="px-5 py-3 font-medium">Status</th>
+                        <th className="px-5 py-3 font-medium text-right">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {filtered.map((t) => (
+                        <tr key={`${t.system}-${t.id}`} className="hover:bg-white/[0.02] transition-colors">
+                          <td className="px-5 py-3.5">
+                            <p className="font-medium">{t.name}</p>
+                            {t.monthlyRevenue !== null && (
+                              <p className="text-xs text-gray-500">R$ {fmtBRL(t.monthlyRevenue)}/mês</p>
+                            )}
+                          </td>
+                          <td className="px-5 py-3.5">
+                            <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+                              style={{ background: `${SYSTEM_COLOR[t.system]}22`, color: SYSTEM_COLOR[t.system] }}>
+                              {t.nicho}
+                            </span>
+                          </td>
+                          <td className="px-5 py-3.5">
+                            <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+                              style={{ background: `${STATUS_COLOR[t.status]}22`, color: STATUS_COLOR[t.status] }}>
+                              {STATUS_LABEL[t.status]}
+                            </span>
+                          </td>
+                          <td className="px-5 py-3.5">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button onClick={() => openDetail(t)} title="Configurar / detalhes"
+                                className="p-1.5 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors">
+                                <Blocks className="w-3.5 h-3.5" />
+                              </button>
+                              {t.canToggleBlock && (
+                                <button onClick={() => handleToggleBlock(t)} title={t.status === 'BLOCKED' ? 'Reativar' : 'Bloquear'}
+                                  className="p-1.5 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors">
+                                  {t.status === 'BLOCKED' ? <Play className="w-3.5 h-3.5" /> : <Ban className="w-3.5 h-3.5" />}
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                      {filtered.length === 0 && (
+                        <tr><td colSpan={4} className="px-5 py-10 text-center text-gray-500">Nenhuma loja encontrada.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Linha de 5 nichos */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+                {NICHE_MODULES.map((m) => {
+                  const statusCounts = (['ACTIVE', 'TRIAL', 'PAST_DUE', 'BLOCKED'] as const).map(
+                    (st) => tenants.filter((t) => t.system === m.key && t.status === st).length,
+                  );
+                  const maxCount = Math.max(1, ...statusCounts);
+                  return (
+                    <div key={m.key} className="rounded-2xl overflow-hidden border flex flex-col"
+                      style={{ borderColor: `${m.color}55`, background: '#0e1015' }}>
+                      <div className="px-4 py-3" style={{ background: m.color }}>
+                        <p className="text-white font-black text-xs uppercase tracking-wide truncate">{m.label}</p>
+                      </div>
+                      <div className="px-3 pt-3">
+                        <button
+                          onClick={() => m.live && setModuleDetail(m)}
+                          disabled={!m.live}
+                          className="w-full py-2 rounded-xl text-xs font-bold bg-white text-gray-900 hover:bg-gray-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          {m.live ? 'Configurar Módulo' : 'Em breve'}
+                        </button>
+                      </div>
+                      <ul className="px-4 py-3 space-y-1.5 flex-1">
+                        {m.features.map((f) => (
+                          <li key={f} className="text-[11px] text-gray-400 flex items-center gap-2">
+                            <span className="w-1 h-1 rounded-full shrink-0" style={{ background: m.color }} />
+                            <span className="truncate">{f}</span>
+                          </li>
+                        ))}
+                      </ul>
+                      <div className="px-4 pb-3 flex items-end gap-1 h-7"
+                        title={m.key === 'SERVICOS' ? 'Sem sistema próprio ainda' : `Ativas ${statusCounts[0]} · Trial ${statusCounts[1]} · Atraso ${statusCounts[2]} · Bloqueadas ${statusCounts[3]}`}>
+                        {statusCounts.map((v, i) => (
+                          <div key={i} className="flex-1 rounded-sm"
+                            style={{ height: `${Math.max(10, (v / maxCount) * 100)}%`, background: v > 0 ? `${m.color}cc` : 'rgba(255,255,255,0.06)' }} />
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* ── Sidebar Direita (Visão Geral do SaaS) ────────────────────── */}
+            <aside className="w-full xl:w-72 shrink-0 space-y-4">
+              <div className="rounded-2xl p-4 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+                <p className="text-xs text-gray-400 mb-1">MRR (receita mensal recorrente)</p>
+                <p className="text-2xl font-bold text-emerald-400">R$ {fmtBRL(mrr.total)}</p>
+                <p className="text-[10px] text-gray-500 mt-1">
+                  Estimado — hoje só {SYSTEM_LABEL.SAUDE_BELEZA} calcula receita real por tenant.
                 </p>
-                <p className="text-2xl font-bold">{count}</p>
-                <p className="text-xs text-gray-500">loja{count === 1 ? '' : 's'}</p>
-              </button>
-            ))}
-          </div>
+              </div>
 
-          {/* Table */}
-          {loading ? (
-            <div className="flex items-center justify-center py-16">
-              <Loader2 className="w-6 h-6 animate-spin text-violet-400" />
-            </div>
-          ) : (
-            <div className="rounded-2xl overflow-hidden border border-white/10" style={{ background: 'var(--surface)' }}>
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-white/10 text-left text-gray-400">
-                    <th className="px-5 py-3 font-medium">Empresa</th>
-                    <th className="px-5 py-3 font-medium">Nicho</th>
-                    <th className="px-5 py-3 font-medium">Status</th>
-                    <th className="px-5 py-3 font-medium">Dono</th>
-                    <th className="px-5 py-3 font-medium">Cadastro</th>
-                    <th className="px-5 py-3 font-medium text-right">Ações</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  {filtered.map((t) => (
-                    <tr key={`${t.system}-${t.id}`} className="hover:bg-white/[0.02] transition-colors">
-                      <td className="px-5 py-3.5">
-                        <p className="font-medium">{t.name}</p>
-                        {t.monthlyRevenue !== null && (
-                          <p className="text-xs text-gray-500">R$ {fmtBRL(t.monthlyRevenue)}/mês</p>
-                        )}
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <span className="text-xs px-2 py-0.5 rounded-full font-medium"
-                          style={{ background: `${SYSTEM_COLOR[t.system]}22`, color: SYSTEM_COLOR[t.system] }}>
-                          {t.nicho}
-                        </span>
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <span className="text-xs px-2 py-0.5 rounded-full font-medium"
-                          style={{ background: `${STATUS_COLOR[t.status]}22`, color: STATUS_COLOR[t.status] }}>
-                          {STATUS_LABEL[t.status]}
-                        </span>
-                      </td>
-                      <td className="px-5 py-3.5 text-gray-400">{t.ownerEmail ?? '—'}</td>
-                      <td className="px-5 py-3.5 text-gray-400">{fmtDate(t.createdAt)}</td>
-                      <td className="px-5 py-3.5">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button onClick={() => openDetail(t)} title="Configurar / detalhes"
-                            className="p-1.5 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors">
-                            <Blocks className="w-3.5 h-3.5" />
-                          </button>
-                          {t.canToggleBlock && (
-                            <button onClick={() => handleToggleBlock(t)} title={t.status === 'BLOCKED' ? 'Reativar' : 'Bloquear'}
-                              className="p-1.5 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors">
-                              {t.status === 'BLOCKED' ? <Play className="w-3.5 h-3.5" /> : <Ban className="w-3.5 h-3.5" />}
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                  {filtered.length === 0 && (
-                    <tr><td colSpan={6} className="px-5 py-10 text-center text-gray-500">Nenhuma loja encontrada.</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
+              <div className="rounded-2xl p-4 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+                <p className="text-xs text-gray-400 mb-1">Total de Clientes</p>
+                <p className="text-2xl font-bold mb-2">{kpis.total}</p>
+                <div className="flex items-center gap-3 text-[10px]">
+                  <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />{kpis.active} ativas</span>
+                  <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-violet-400" />{kpis.trial} trial</span>
+                  <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-red-400" />{kpis.blocked} bloq.</span>
+                </div>
+              </div>
+
+              <div className="rounded-2xl p-4 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+                <p className="text-xs text-gray-400 mb-3">Receita por Nicho</p>
+                {mrr.total > 0 ? (
+                  <div className="flex items-center gap-4">
+                    <DonutChart segments={mrr.bySystem.map((s) => ({ color: SYSTEM_COLOR[s.system], value: s.value }))} />
+                    <ul className="space-y-1.5 text-[11px]">
+                      {mrr.bySystem.filter((s) => s.value > 0).map((s) => (
+                        <li key={s.system} className="flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: SYSTEM_COLOR[s.system] }} />
+                          <span className="text-gray-400">{SYSTEM_LABEL[s.system]}</span>
+                          <span className="font-semibold ml-auto">R$ {fmtBRL(s.value)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-gray-500 italic">Sem receita computável ainda.</p>
+                )}
+              </div>
+
+              <div className="rounded-2xl p-4 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+                <p className="text-xs text-gray-400 mb-1">Alertas de Faturamento</p>
+                {billingAlerts.length > 0 ? (
+                  <>
+                    <p className="text-2xl font-bold text-amber-400 mb-2">{billingAlerts.length}</p>
+                    <ul className="space-y-1 text-[11px] text-gray-400">
+                      {billingAlerts.slice(0, 4).map((t) => (
+                        <li key={`${t.system}-${t.id}`} className="truncate">
+                          <span className="font-medium text-amber-300">{t.name}</span> — {SYSTEM_LABEL[t.system]}
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                ) : (
+                  <p className="text-[11px] text-gray-500 italic">Nenhuma loja em atraso.</p>
+                )}
+              </div>
+
+              <div className="rounded-2xl p-4 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+                <p className="text-xs text-gray-400 mb-1">Análise de Churn</p>
+                <p className="text-[11px] text-gray-500 italic">
+                  Sem dados históricos suficientes ainda — precisa de snapshots ao longo do tempo pra calcular de verdade.
+                </p>
+              </div>
+            </aside>
+          </div>
         </div>
         )}
       </div>
@@ -540,12 +641,26 @@ export default function DashboardPage() {
   );
 }
 
-function KpiCard({ label, value, color }: { label: string; value: number; color?: string }) {
+/** Donut simples via stroke-dasharray — sem lib de gráfico, só SVG cru. */
+function DonutChart({ segments, size = 88, strokeWidth = 13 }: { segments: { color: string; value: number }[]; size?: number; strokeWidth?: number }) {
+  const total = segments.reduce((s, x) => s + x.value, 0);
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  let offsetAcc = 0;
   return (
-    <div className="rounded-2xl p-4 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-      <p className="text-xs text-gray-400 mb-1">{label}</p>
-      <p className="text-2xl font-bold" style={color ? { color } : undefined}>{value}</p>
-    </div>
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="shrink-0">
+      <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={strokeWidth} />
+      {total > 0 && segments.filter((s) => s.value > 0).map((s) => {
+        const dash = (s.value / total) * circumference;
+        const el = (
+          <circle key={s.color} cx={size / 2} cy={size / 2} r={radius} fill="none" stroke={s.color} strokeWidth={strokeWidth}
+            strokeDasharray={`${dash} ${circumference - dash}`} strokeDashoffset={-offsetAcc}
+            transform={`rotate(-90 ${size / 2} ${size / 2})`} />
+        );
+        offsetAcc += dash;
+        return el;
+      })}
+    </svg>
   );
 }
 
