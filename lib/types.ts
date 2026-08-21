@@ -45,6 +45,7 @@ export interface Tenant {
   monthlyRevenue: number | null;
   canToggleBlock: boolean;
   canResetPassword: boolean;
+  canImpersonate: boolean;
   /** Objeto original retornado pelo sistema de origem — usado no painel de detalhe. */
   raw: Record<string, unknown>;
 }

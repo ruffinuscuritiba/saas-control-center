@@ -82,6 +82,16 @@ function toIso(d: unknown): string | null {
   try { return new Date(d as string).toISOString(); } catch { return null; }
 }
 
+function b64url(obj: unknown): string {
+  return encodeURIComponent(Buffer.from(JSON.stringify(obj)).toString('base64'));
+}
+
+function frontendUrl(key: 'FOOD' | 'SBE' | 'OFICINA' | 'MODA'): string {
+  const url = process.env[`${key}_FRONTEND_URL`];
+  if (!url) throw new Error(`${key}_FRONTEND_URL não configurada.`);
+  return url;
+}
+
 // ─── FOOD ───────────────────────────────────────────────────────────────────
 
 async function listFood(): Promise<Tenant[]> {
@@ -107,7 +117,8 @@ async function listFood(): Promise<Tenant[]> {
       ],
       monthlyRevenue: null,
       canToggleBlock: true,
-      canResetPassword: false,
+      canResetPassword: true,
+      canImpersonate: true,
       raw: c,
     };
   });
@@ -117,8 +128,17 @@ async function toggleBlockFood(id: string): Promise<void> {
   await apiCall('FOOD', `/super-admin/companies/${id}/block`, { method: 'PATCH' });
 }
 
-async function impersonateFood(id: string): Promise<{ url?: string; accessToken?: string }> {
-  return apiCall('FOOD', `/super-admin/companies/${id}/impersonate`, { method: 'POST' });
+async function resetPasswordFood(id: string, newPassword: string): Promise<{ email: string }> {
+  return apiCall('FOOD', `/super-admin/companies/${id}/reset-owner-password`, {
+    method: 'PATCH',
+    body: JSON.stringify({ newPassword }),
+  });
+}
+
+async function impersonateFood(id: string): Promise<{ url: string }> {
+  const data = await apiCall('FOOD', `/super-admin/companies/${id}/impersonate`, { method: 'POST' });
+  const url = `${frontendUrl('FOOD')}/impersonate?token=${encodeURIComponent(data.accessToken)}&user=${b64url(data.user)}&companyName=${encodeURIComponent(data.companyName ?? '')}`;
+  return { url };
 }
 
 // ─── SAÚDE & BELEZA ─────────────────────────────────────────────────────────
@@ -152,6 +172,7 @@ async function listSaudeBeleza(): Promise<Tenant[]> {
       : null,
     canToggleBlock: true,
     canResetPassword: true,
+    canImpersonate: true,
     raw: n,
   }));
 }
@@ -172,6 +193,12 @@ async function resetPasswordSaudeBeleza(id: string, newPassword: string): Promis
     method: 'PATCH',
     body: JSON.stringify({ newPassword }),
   });
+}
+
+async function impersonateSaudeBeleza(id: string): Promise<{ url: string }> {
+  const data = await apiCall('SAUDE_BELEZA', `/super-admin/networks/${id}/impersonate`, { method: 'POST' });
+  const url = `${frontendUrl('SBE')}/impersonate?token=${encodeURIComponent(data.accessToken)}&user=${b64url(data.user)}`;
+  return { url };
 }
 
 // ─── OFICINA ────────────────────────────────────────────────────────────────
@@ -198,13 +225,31 @@ async function listOficina(): Promise<Tenant[]> {
     ],
     monthlyRevenue: null,
     canToggleBlock: true,
-    canResetPassword: false,
+    canResetPassword: true,
+    canImpersonate: true,
     raw: l,
   }));
 }
 
 async function toggleBlockOficina(id: string): Promise<void> {
   await apiCall('OFICINA', `/super-admin/lojas/${id}/toggle-ativo`, { method: 'POST' });
+}
+
+async function resetPasswordOficina(id: string, newPassword: string): Promise<{ email: string }> {
+  return apiCall('OFICINA', `/super-admin/lojas/${id}/reset-admin-password`, {
+    method: 'POST',
+    body: JSON.stringify({ novaSenha: newPassword }),
+  });
+}
+
+async function impersonateOficina(id: string): Promise<{ url: string }> {
+  const data = await apiCall('OFICINA', `/super-admin/lojas/${id}/impersonate`, { method: 'POST' });
+  // O hand-off é uma rota do próprio backend Express (painel server-renderizado,
+  // não um frontend Next.js separado) — por isso usa a origem da API, não um
+  // "OFICINA_FRONTEND_URL" à parte.
+  const cfg = getConfig('OFICINA');
+  const origin = new URL(cfg.baseUrl).origin;
+  return { url: `${origin}/admin/impersonate?token=${encodeURIComponent(data.accessToken)}` };
 }
 
 // ─── MODA ───────────────────────────────────────────────────────────────────
@@ -227,6 +272,7 @@ async function listModa(): Promise<Tenant[]> {
     monthlyRevenue: null,
     canToggleBlock: true,
     canResetPassword: true,
+    canImpersonate: true,
     raw: c,
   }));
 }
@@ -243,6 +289,12 @@ async function resetPasswordModa(id: string, newPassword: string): Promise<{ ema
     method: 'PATCH',
     body: JSON.stringify({ newPassword }),
   });
+}
+
+async function impersonateModa(id: string): Promise<{ url: string }> {
+  const data = await apiCall('MODA', `/super-admin/companies/${id}/impersonate`, { method: 'POST' });
+  const url = `${frontendUrl('MODA')}/impersonate?token=${encodeURIComponent(data.accessToken)}&user=${b64url(data.user)}&company=${b64url(data.company)}`;
+  return { url };
 }
 
 // ─── API pública do módulo ──────────────────────────────────────────────────
@@ -273,12 +325,17 @@ export async function toggleBlock(system: SystemKey, id: string, currentlyBlocke
 }
 
 export async function resetPassword(system: SystemKey, id: string, newPassword: string): Promise<{ email: string }> {
+  if (system === 'FOOD') return resetPasswordFood(id, newPassword);
   if (system === 'SAUDE_BELEZA') return resetPasswordSaudeBeleza(id, newPassword);
+  if (system === 'OFICINA') return resetPasswordOficina(id, newPassword);
   if (system === 'MODA') return resetPasswordModa(id, newPassword);
   throw new Error(`Reset de senha não suportado para ${system} ainda.`);
 }
 
-export async function impersonate(system: SystemKey, id: string) {
+export async function impersonate(system: SystemKey, id: string): Promise<{ url: string }> {
   if (system === 'FOOD') return impersonateFood(id);
+  if (system === 'SAUDE_BELEZA') return impersonateSaudeBeleza(id);
+  if (system === 'OFICINA') return impersonateOficina(id);
+  if (system === 'MODA') return impersonateModa(id);
   throw new Error(`Impersonação não suportada para ${system} ainda.`);
 }
