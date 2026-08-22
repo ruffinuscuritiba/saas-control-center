@@ -116,6 +116,8 @@ export default function DashboardPage() {
   const [checked, setChecked] = useState(false);
   const [view, setView] = useState<ViewKey>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
+  const [alertHighlight, setAlertHighlight] = useState(false);
   const [moduleDetail, setModuleDetail] = useState<NicheModule | null>(null);
 
   const [tenants, setTenants] = useState<Tenant[]>([]);
@@ -265,6 +267,16 @@ export default function DashboardPage() {
     if (m.live) setModuleDetail(m);
   }
 
+  function openBillingAlerts() {
+    setView('dashboard');
+    setTimeout(() => {
+      const el = document.getElementById('billing-alerts-card');
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setAlertHighlight(true);
+      setTimeout(() => setAlertHighlight(false), 1600);
+    }, 50);
+  }
+
   // ── Login gate ──────────────────────────────────────────────────────────
 
   if (!checked) return null;
@@ -367,14 +379,30 @@ export default function DashboardPage() {
           <h1 className="text-lg font-bold flex-1">
             {view === 'modulos' ? 'Configuração de Módulos' : view === 'clientes' ? 'Gestão de Clientes (Tenants)' : 'Dashboard'}
           </h1>
-          <button title={billingAlerts.length > 0 ? `${billingAlerts.length} loja(s) em atraso` : 'Nenhum alerta de faturamento'}
+          <button onClick={openBillingAlerts}
+            title={billingAlerts.length > 0 ? `${billingAlerts.length} loja(s) em atraso — clique para ver` : 'Nenhum alerta de faturamento'}
             className="relative p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors shrink-0">
             <Bell className="w-4.5 h-4.5" />
             {billingAlerts.length > 0 && (
               <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500 ring-2 ring-[#0b0d12]" />
             )}
           </button>
-          <UserCircle2 className="w-8 h-8 text-gray-500 shrink-0" />
+          <div className="relative shrink-0">
+            <button onClick={() => setAvatarMenuOpen((v) => !v)} title="Conta">
+              <UserCircle2 className="w-8 h-8 text-gray-500 hover:text-gray-300 transition-colors" />
+            </button>
+            {avatarMenuOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setAvatarMenuOpen(false)} />
+                <div className="absolute right-0 top-10 z-20 w-40 rounded-xl border border-white/10 py-1.5 shadow-xl" style={{ background: 'var(--surface)' }}>
+                  <button onClick={handleLogout}
+                    className="w-full text-left px-3.5 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
+                    Sair da conta
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto px-8 py-6">
@@ -448,7 +476,8 @@ export default function DashboardPage() {
                     )}
                   </div>
 
-                  <div className="rounded-2xl p-4 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+                  <div id="billing-alerts-card" className={`rounded-2xl p-4 border transition-all duration-500 ${alertHighlight ? 'ring-2 ring-amber-400' : ''}`}
+                    style={{ background: 'var(--surface)', borderColor: alertHighlight ? '#fbbf24' : 'var(--border)' }}>
                     <p className="text-xs text-gray-400 mb-1">Alertas de Faturamento</p>
                     {billingAlerts.length > 0 ? (
                       <>
@@ -681,10 +710,11 @@ function TenantsTable({
               placeholder="Buscar empresa, nicho ou e-mail..."
               className="w-full bg-white/5 border border-white/10 rounded-xl pl-8 pr-3 py-1.5 text-xs outline-none placeholder:text-gray-500 focus:border-violet-500" />
           </div>
-          <button disabled title="Cadastro de novo cliente cross-sistema — ainda não existe (cada sistema tem seu próprio signup)"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-violet-600/40 text-white/60 cursor-not-allowed shrink-0">
+          <a href="https://food-system-sas-erp-frontend.vercel.app/super-admin/dashboard" target="_blank" rel="noopener noreferrer"
+            title='Abre o dashboard do FoodSaaS — clique em "Novo restaurante" lá (cadastro unificado pros 4 sistemas ainda não existe)'
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-violet-600 hover:bg-violet-500 text-white transition-colors shrink-0">
             <Plus className="w-3.5 h-3.5" /> Novo Cliente
-          </button>
+          </a>
         </div>
       </div>
       {loading ? (
