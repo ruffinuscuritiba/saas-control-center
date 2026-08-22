@@ -273,19 +273,22 @@ export default function DashboardPage() {
                   Módulos" — clicar filtra a tabela por esse nicho de
                   verdade (systemFilter real, não decorativo). */}
               {item.key === 'modulos' && (
-                <div className="mt-1 pl-2 space-y-0.5">
-                  {NICHE_MODULES.map((m) => (
-                    <button key={m.key}
-                      onClick={() => { if (m.live) { setSystemFilter(m.key as SystemKey); setView('dashboard'); } }}
-                      disabled={!m.live}
-                      className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors text-left disabled:cursor-not-allowed ${
-                        systemFilter === m.key ? 'bg-white/10 text-white font-bold' : 'text-gray-400 hover:text-white hover:bg-white/5'
-                      } ${!m.live ? 'opacity-50' : ''}`}>
-                      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: m.color }} />
-                      <span className="truncate flex-1">{m.label}</span>
-                      {!m.live && <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 shrink-0">em breve</span>}
-                    </button>
-                  ))}
+                <div className="mt-1.5 pl-2 space-y-1.5">
+                  {NICHE_MODULES.map((m) => {
+                    const active = systemFilter === m.key;
+                    return (
+                      <button key={m.key}
+                        onClick={() => { if (m.live) { setSystemFilter(m.key as SystemKey); setView('dashboard'); } }}
+                        disabled={!m.live}
+                        className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all text-left border disabled:cursor-not-allowed"
+                        style={m.live
+                          ? { background: active ? m.color : `${m.color}22`, borderColor: `${m.color}66`, color: active ? '#fff' : m.color }
+                          : { background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.35)' }}>
+                        <span className="truncate flex-1">{m.label}</span>
+                        {!m.live && <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 shrink-0">em breve</span>}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
