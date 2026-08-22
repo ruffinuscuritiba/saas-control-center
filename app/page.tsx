@@ -40,27 +40,31 @@ interface NicheModule {
   icon: typeof Wrench;
   features: string[];
   live: boolean;
+  chartType: 'line' | 'bar';
 }
 
 const NICHE_MODULES: NicheModule[] = [
   {
-    key: 'OFICINA', label: 'Mecânica', color: '#3b82f6', icon: Wrench, live: true,
+    key: 'OFICINA', label: 'Mecânica', color: '#0084ff', icon: Wrench, live: true, chartType: 'line',
     features: ['Ordem de Serviço', 'Checklist de Entrada', 'Peças', 'Histórico Veicular'],
   },
   {
-    key: 'MODA', label: 'Loja de Roupas', color: '#ef4444', icon: Shirt, live: true,
+    key: 'MODA', label: 'Loja de Roupas', color: '#ff2d55', icon: Shirt, live: true, chartType: 'bar',
     features: ['Controle de Grade (Cor/Tamanho)', 'PDV', 'Estoque de Roupas', 'Vendedores'],
   },
   {
-    key: 'FOOD', label: 'Food Service', color: '#f97316', icon: UtensilsCrossed, live: true,
+    key: 'FOOD', label: 'Food Service', color: '#ff8800', icon: UtensilsCrossed, live: true, chartType: 'line',
     features: ['KDS', 'Comandas/Mesas', 'Pedidos', 'Sabor/Complementos'],
   },
   {
-    key: 'SAUDE_BELEZA', label: 'Clínica de Estética', color: '#a855f7', icon: Sparkles, live: true,
+    key: 'SAUDE_BELEZA', label: 'Clínica de Estética', color: '#a230ff', icon: Sparkles, live: true, chartType: 'bar',
     features: ['Agenda', 'Anamnese', 'Sessões/Pacotes', 'Profissionais'],
   },
   {
-    key: 'SERVICOS', label: 'Serviços / Consultoria', color: '#22c55e', icon: Briefcase, live: false,
+    // "Em breve" de propósito — não existe sistema real de Serviços/
+    // Consultoria hoje (SYSTEMS só tem FOOD/SAUDE_BELEZA/OFICINA/MODA).
+    // Marcar live:true aqui abriria um módulo que nunca vai ter tenant.
+    key: 'SERVICOS', label: 'Serviços / Consultoria', color: '#00c853', icon: Briefcase, live: false, chartType: 'bar',
     features: ['Gestão de Projetos', 'Horas', 'Relatórios', 'Contratos'],
   },
 ];
@@ -265,16 +269,21 @@ export default function DashboardPage() {
                   <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition-transform ${view === item.key ? 'rotate-180' : ''}`} />
                 )}
               </button>
-              {/* Tira de acesso rápido aos 5 nichos, logo abaixo de
-                  "Configuração de Módulos" — mesmo agrupamento visual da
-                  referência (ícone colorido de cada módulo lado a lado). */}
+              {/* Lista dos 5 nichos logo abaixo de "Configuração de
+                  Módulos" — clicar filtra a tabela por esse nicho de
+                  verdade (systemFilter real, não decorativo). */}
               {item.key === 'modulos' && (
-                <div className="flex items-center gap-1.5 px-2 pt-2 pb-1">
+                <div className="mt-1 pl-2 space-y-0.5">
                   {NICHE_MODULES.map((m) => (
-                    <button key={m.key} onClick={() => openModule(m)} disabled={!m.live} title={m.label}
-                      className="w-8 h-8 rounded-lg flex items-center justify-center transition-transform hover:scale-110 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
-                      style={{ background: `${m.color}22` }}>
-                      <m.icon className="w-4 h-4" style={{ color: m.color }} />
+                    <button key={m.key}
+                      onClick={() => { if (m.live) { setSystemFilter(m.key as SystemKey); setView('dashboard'); } }}
+                      disabled={!m.live}
+                      className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors text-left disabled:cursor-not-allowed ${
+                        systemFilter === m.key ? 'bg-white/10 text-white font-bold' : 'text-gray-400 hover:text-white hover:bg-white/5'
+                      } ${!m.live ? 'opacity-50' : ''}`}>
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: m.color }} />
+                      <span className="truncate flex-1">{m.label}</span>
+                      {!m.live && <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 shrink-0">em breve</span>}
                     </button>
                   ))}
                 </div>
@@ -309,22 +318,9 @@ export default function DashboardPage() {
             className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors shrink-0">
             <Menu className="w-4.5 h-4.5" />
           </button>
-          <h1 className="text-lg font-bold shrink-0">
+          <h1 className="text-lg font-bold flex-1">
             {view === 'modulos' ? 'Configuração de Módulos' : view === 'clientes' ? 'Gestão de Clientes (Tenants)' : 'Dashboard'}
           </h1>
-          {view !== 'modulos' && (
-            <div className="flex-1 flex items-center gap-2 max-w-md px-3 py-2 rounded-xl bg-white/5 border border-white/10">
-              <Search className="w-4 h-4 text-gray-500 shrink-0" />
-              <input value={search} onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar empresa, nicho ou e-mail do dono..."
-                className="flex-1 bg-transparent text-sm outline-none placeholder:text-gray-500" />
-            </div>
-          )}
-          <div className="flex-1" />
-          <button disabled title="Cadastro de novo cliente cross-sistema — ainda não existe (cada sistema tem seu próprio signup)"
-            className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-violet-600/40 text-white/60 cursor-not-allowed shrink-0">
-            <Plus className="w-3.5 h-3.5" /> Novo Cliente
-          </button>
           <button title={billingAlerts.length > 0 ? `${billingAlerts.length} loja(s) em atraso` : 'Nenhum alerta de faturamento'}
             className="relative p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors shrink-0">
             <Bell className="w-4.5 h-4.5" />
@@ -359,18 +355,15 @@ export default function DashboardPage() {
 
           {view === 'dashboard' && (
             <>
-              <DemoCentralCard />
-              <div className="flex flex-col xl:flex-row gap-6 items-start">
+              <div className="mb-6"><DemoCentralCard /></div>
+              <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 items-start mb-6">
                 {/* ── Conteúdo Principal (Esquerda/Centro) ─────────────────── */}
-                <div className="flex-1 min-w-0 w-full">
-                  <div className="mb-8">
-                    <TenantsTable tenants={filtered} loading={loading} onOpenDetail={openDetail} onToggleBlock={handleToggleBlock} />
-                  </div>
-                  <NicheGrid tenants={tenants} onConfigure={openModule} />
+                <div className="xl:col-span-3 min-w-0 w-full">
+                  <TenantsTable tenants={filtered} loading={loading} search={search} setSearch={setSearch} onOpenDetail={openDetail} onToggleBlock={handleToggleBlock} />
                 </div>
 
                 {/* ── Sidebar Direita (Visão Geral do SaaS) ────────────────── */}
-                <aside className="w-full xl:w-72 shrink-0 space-y-4">
+                <aside className="w-full space-y-4">
                   <div className="rounded-2xl p-4 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
                     <p className="text-xs text-gray-400 mb-1">MRR (receita mensal recorrente)</p>
                     <p className="text-2xl font-bold text-emerald-400">R$ {fmtBRL(mrr.total)}</p>
@@ -435,11 +428,12 @@ export default function DashboardPage() {
                   </div>
                 </aside>
               </div>
+              <NicheGrid tenants={tenants} onConfigure={openModule} />
             </>
           )}
 
           {view === 'clientes' && (
-            <TenantsTable tenants={filtered} loading={loading} onOpenDetail={openDetail} onToggleBlock={handleToggleBlock} />
+            <TenantsTable tenants={filtered} loading={loading} search={search} setSearch={setSearch} onOpenDetail={openDetail} onToggleBlock={handleToggleBlock} />
           )}
 
           {view === 'modulos' && (
@@ -621,25 +615,37 @@ function DemoCentralCard() {
 }
 
 function TenantsTable({
-  tenants, loading, onOpenDetail, onToggleBlock,
+  tenants, loading, search, setSearch, onOpenDetail, onToggleBlock,
 }: {
   tenants: Tenant[];
   loading: boolean;
+  search: string;
+  setSearch: (v: string) => void;
   onOpenDetail: (t: Tenant) => void;
   onToggleBlock: (t: Tenant) => void;
 }) {
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <Loader2 className="w-6 h-6 animate-spin text-violet-400" />
-      </div>
-    );
-  }
   return (
     <div className="rounded-2xl overflow-hidden border border-white/10" style={{ background: 'var(--surface)' }}>
-      <div className="px-5 py-3.5 border-b border-white/10">
-        <p className="text-sm font-bold">Clientes &amp; Empresas ({tenants.length})</p>
+      <div className="px-5 py-3.5 border-b border-white/10 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <p className="text-sm font-bold shrink-0">Clientes &amp; Empresas ({tenants.length})</p>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="relative flex-1 sm:w-64">
+            <Search className="w-3.5 h-3.5 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input value={search} onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar empresa, nicho ou e-mail..."
+              className="w-full bg-white/5 border border-white/10 rounded-xl pl-8 pr-3 py-1.5 text-xs outline-none placeholder:text-gray-500 focus:border-violet-500" />
+          </div>
+          <button disabled title="Cadastro de novo cliente cross-sistema — ainda não existe (cada sistema tem seu próprio signup)"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-violet-600/40 text-white/60 cursor-not-allowed shrink-0">
+            <Plus className="w-3.5 h-3.5" /> Novo Cliente
+          </button>
+        </div>
       </div>
+      {loading ? (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="w-6 h-6 animate-spin text-violet-400" />
+        </div>
+      ) : (
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-white/10 text-left text-gray-400">
@@ -701,7 +707,8 @@ function TenantsTable({
           )}
         </tbody>
       </table>
-      {tenants.length > 0 && (
+      )}
+      {!loading && tenants.length > 0 && (
         <div className="px-5 py-3 border-t border-white/10 text-xs text-gray-500">
           Mostrando {tenants.length} de {tenants.length}
         </div>
@@ -749,7 +756,11 @@ function NicheGrid({ tenants, onConfigure }: { tenants: Tenant[]; onConfigure: (
             <div className="mx-4 mb-3 rounded-lg overflow-hidden h-16"
               style={{ background: `${m.color}14` }}
               title={m.key === 'SERVICOS' ? 'Sem sistema próprio ainda' : `Ativas ${statusCounts[0]} · Trial ${statusCounts[1]} · Atraso ${statusCounts[2]} · Bloqueadas ${statusCounts[3]}`}>
-              <StatusAreaChart values={statusCounts} max={maxCount} color={m.color} />
+              {m.chartType === 'line' ? (
+                <StatusAreaChart values={statusCounts} max={maxCount} color={m.color} />
+              ) : (
+                <StatusBarChart values={statusCounts} max={maxCount} color={m.color} />
+              )}
             </div>
           </div>
         );
@@ -788,6 +799,20 @@ function StatusAreaChart({ values, max, color }: { values: number[]; max: number
         <circle key={i} cx={x} cy={y} r="2" fill={color} />
       ))}
     </svg>
+  );
+}
+
+/** Variante em barras do mesmo dado real (Ativas/Trial/Atraso/Bloqueadas) —
+ * só pra dar variedade visual entre os cards, mesmo princípio do line chart
+ * acima: zero número inventado, sempre os 4 status reais desse nicho. */
+function StatusBarChart({ values, max, color }: { values: number[]; max: number; color: string }) {
+  return (
+    <div className="w-full h-full flex items-end gap-1.5 px-1 pb-1">
+      {values.map((v, i) => (
+        <div key={i} className="flex-1 rounded-t-sm transition-all"
+          style={{ height: `${Math.max(8, (v / max) * 100)}%`, background: v > 0 ? color : 'rgba(255,255,255,0.08)', opacity: v > 0 ? 0.85 : 1 }} />
+      ))}
+    </div>
   );
 }
 
