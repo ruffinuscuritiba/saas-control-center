@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Crown, LayoutDashboard, Users, CreditCard, Blocks, LifeBuoy, ScrollText,
   Search, Loader2, Ban, Play, KeyRound, ExternalLink, X, AlertTriangle,
-  Wrench, Shirt, UtensilsCrossed, Sparkles, Briefcase, Settings2, Lock,
+  Wrench, Shirt, UtensilsCrossed, Sparkles, Briefcase,
 } from 'lucide-react';
 import {
   SYSTEM_LABEL, SYSTEM_COLOR, STATUS_LABEL, STATUS_COLOR,
@@ -269,68 +269,21 @@ export default function DashboardPage() {
 
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Topbar */}
+        {/* Topbar — os 3 itens de nav (Dashboard/Clientes/Módulos) renderizam a
+            MESMA página unificada (tabela + 5 nichos + sidebar), só o item
+            ativo na sidebar muda; não existe mais uma página separada "só
+            módulos" desalinhada do restante — modelo de referência do
+            usuário mostra tudo numa tela só. */}
         <div className="flex items-center gap-4 px-8 py-5 border-b border-white/10">
-          <h1 className="text-lg font-bold">
-            {view === 'modulos' ? 'Configuração de Módulos' : 'Dashboard'}
-          </h1>
-          {view !== 'modulos' && (
-            <div className="flex-1 flex items-center gap-2 max-w-md px-3 py-2 rounded-xl bg-white/5 border border-white/10">
-              <Search className="w-4 h-4 text-gray-500 shrink-0" />
-              <input value={search} onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar empresa, nicho ou e-mail do dono..."
-                className="flex-1 bg-transparent text-sm outline-none placeholder:text-gray-500" />
-            </div>
-          )}
+          <h1 className="text-lg font-bold">Dashboard</h1>
+          <div className="flex-1 flex items-center gap-2 max-w-md px-3 py-2 rounded-xl bg-white/5 border border-white/10">
+            <Search className="w-4 h-4 text-gray-500 shrink-0" />
+            <input value={search} onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar empresa, nicho ou e-mail do dono..."
+              className="flex-1 bg-transparent text-sm outline-none placeholder:text-gray-500" />
+          </div>
         </div>
 
-        {view === 'modulos' ? (
-          <div className="flex-1 overflow-y-auto px-8 py-6">
-            <p className="text-sm text-gray-400 mb-6 max-w-2xl">
-              Cada card representa um nicho da plataforma. Os 4 com sistema próprio já
-              agregam tenants reais no Dashboard; Serviços/Consultoria ainda não tem um
-              sistema por trás — aparece aqui como próximo passo, não como módulo ativo.
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-              {NICHE_MODULES.map((m) => (
-                <div key={m.key} className="rounded-2xl p-5 border flex flex-col"
-                  style={{ background: `${m.color}0d`, borderColor: `${m.color}33` }}>
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${m.color}22` }}>
-                      <m.icon className="w-5 h-5" style={{ color: m.color }} />
-                    </div>
-                    {m.live ? (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: `${m.color}22`, color: m.color }}>
-                        ATIVO
-                      </span>
-                    ) : (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/5 text-gray-500 flex items-center gap-1">
-                        <Lock className="w-2.5 h-2.5" /> EM BREVE
-                      </span>
-                    )}
-                  </div>
-                  <h3 className="font-bold mb-3" style={{ color: m.color }}>{m.label}</h3>
-                  <ul className="space-y-1.5 mb-5 flex-1">
-                    {m.features.map((f) => (
-                      <li key={f} className="text-xs text-gray-400 flex items-center gap-2">
-                        <span className="w-1 h-1 rounded-full shrink-0" style={{ background: m.color }} />
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
-                  <button
-                    onClick={() => m.live && setModuleDetail(m)}
-                    disabled={!m.live}
-                    className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                    style={{ background: `${m.color}22`, color: m.color }}
-                  >
-                    <Settings2 className="w-3.5 h-3.5" /> Configurar Módulo
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : (
         <div className="flex-1 overflow-y-auto px-8 py-6">
           {errors.length > 0 && (
             <div className="mb-6 rounded-xl p-4 bg-amber-500/10 border border-amber-500/20 flex items-start gap-3">
@@ -527,7 +480,6 @@ export default function DashboardPage() {
             </aside>
           </div>
         </div>
-        )}
       </div>
 
       {/* Detail drawer */}
