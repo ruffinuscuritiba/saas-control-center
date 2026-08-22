@@ -646,8 +646,9 @@ function TenantsTable({
           <Loader2 className="w-6 h-6 animate-spin text-violet-400" />
         </div>
       ) : (
+      <div className="max-h-[480px] overflow-y-auto scc-scroll">
       <table className="w-full text-sm">
-        <thead>
+        <thead className="sticky top-0 z-[1]" style={{ background: 'var(--surface)' }}>
           <tr className="border-b border-white/10 text-left text-gray-400">
             <th className="px-5 py-3 font-medium">Empresa</th>
             <th className="px-5 py-3 font-medium">Nicho</th>
@@ -707,6 +708,7 @@ function TenantsTable({
           )}
         </tbody>
       </table>
+      </div>
       )}
       {!loading && tenants.length > 0 && (
         <div className="px-5 py-3 border-t border-white/10 text-xs text-gray-500">

@@ -16,3 +16,23 @@ body {
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
+
+/* Barra de rolagem fina e discreta — usada na área com altura limitada da
+   tabela de clientes, pra não pesar visualmente quando tem muitas lojas. */
+.scc-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+.scc-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.scc-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scc-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+}
+.scc-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
