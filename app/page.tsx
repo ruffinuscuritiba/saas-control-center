@@ -5,7 +5,7 @@ import {
   Crown, LayoutDashboard, Users, CreditCard, Blocks, LifeBuoy, ScrollText,
   Search, Loader2, Ban, Play, KeyRound, ExternalLink, X, AlertTriangle,
   Wrench, Shirt, UtensilsCrossed, Sparkles, Briefcase, Rocket, Copy, MessageCircle,
-  ChevronDown,
+  ChevronDown, Menu, Plus, Bell, UserCircle2,
 } from 'lucide-react';
 import {
   SYSTEM_LABEL, SYSTEM_COLOR, STATUS_LABEL, STATUS_COLOR,
@@ -84,6 +84,7 @@ export default function DashboardPage() {
   const [token, setToken] = useState<string | null>(null);
   const [checked, setChecked] = useState(false);
   const [view, setView] = useState<ViewKey>('dashboard');
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [moduleDetail, setModuleDetail] = useState<NicheModule | null>(null);
 
   const [tenants, setTenants] = useState<Tenant[]>([]);
@@ -244,25 +245,41 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen flex bg-[#0b0d12] text-white">
       {/* Sidebar */}
-      <aside className="w-64 shrink-0 border-r border-white/10 flex flex-col bg-[#0e1015]">
-        <div className="flex items-center gap-2.5 px-5 py-5 border-b border-white/10">
+      <aside className={`shrink-0 border-r border-white/10 flex flex-col bg-[#0e1015] overflow-hidden transition-all duration-200 ${sidebarOpen ? 'w-64' : 'w-0 border-r-0'}`}>
+        <div className="flex items-center gap-2.5 px-5 py-5 border-b border-white/10 w-64">
           <Crown className="w-5 h-5 text-violet-400" />
           <span className="font-bold text-sm">Painel Super Admin</span>
         </div>
-        <nav className="flex-1 px-3 py-4 space-y-1">
+        <nav className="flex-1 px-3 py-4 space-y-1 w-64">
           {NAV.map((item) => (
-            <button key={item.key} onClick={() => setView(item.key)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors text-left ${
-                view === item.key
-                  ? 'bg-violet-600/15 text-violet-300'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5'
-              }`}>
-              <item.icon className="w-4 h-4 shrink-0" />
-              <span className="flex-1 truncate">{item.label}</span>
-              {item.key !== 'dashboard' && (
-                <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition-transform ${view === item.key ? 'rotate-180' : ''}`} />
+            <div key={item.key}>
+              <button onClick={() => setView(item.key)}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors text-left ${
+                  view === item.key
+                    ? 'bg-violet-600/15 text-violet-300'
+                    : 'text-gray-400 hover:text-white hover:bg-white/5'
+                }`}>
+                <item.icon className="w-4 h-4 shrink-0" />
+                <span className="flex-1 truncate">{item.label}</span>
+                {item.key !== 'dashboard' && (
+                  <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition-transform ${view === item.key ? 'rotate-180' : ''}`} />
+                )}
+              </button>
+              {/* Tira de acesso rápido aos 5 nichos, logo abaixo de
+                  "Configuração de Módulos" — mesmo agrupamento visual da
+                  referência (ícone colorido de cada módulo lado a lado). */}
+              {item.key === 'modulos' && (
+                <div className="flex items-center gap-1.5 px-2 pt-2 pb-1">
+                  {NICHE_MODULES.map((m) => (
+                    <button key={m.key} onClick={() => openModule(m)} disabled={!m.live} title={m.label}
+                      className="w-8 h-8 rounded-lg flex items-center justify-center transition-transform hover:scale-110 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
+                      style={{ background: `${m.color}22` }}>
+                      <m.icon className="w-4 h-4" style={{ color: m.color }} />
+                    </button>
+                  ))}
+                </div>
               )}
-            </button>
+            </div>
           ))}
           <div className="pt-2 mt-2 border-t border-white/5 space-y-1">
             {DISABLED_NAV.map((item) => (
@@ -274,19 +291,8 @@ export default function DashboardPage() {
               </button>
             ))}
           </div>
-          {/* Tira de acesso rápido aos 5 nichos — mesmo padrão visual da
-              referência, ícone colorido de cada módulo lado a lado. */}
-          <div className="pt-3 mt-3 border-t border-white/5 flex items-center gap-1.5 px-1">
-            {NICHE_MODULES.map((m) => (
-              <button key={m.key} onClick={() => openModule(m)} disabled={!m.live} title={m.label}
-                className="w-8 h-8 rounded-lg flex items-center justify-center transition-transform hover:scale-110 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
-                style={{ background: `${m.color}22` }}>
-                <m.icon className="w-4 h-4" style={{ color: m.color }} />
-              </button>
-            ))}
-          </div>
         </nav>
-        <div className="p-3 border-t border-white/10">
+        <div className="p-3 border-t border-white/10 w-64">
           <button onClick={handleLogout} className="w-full text-sm text-gray-400 hover:text-white transition-colors py-2">
             Sair
           </button>
@@ -298,8 +304,12 @@ export default function DashboardPage() {
         {/* Topbar — cada item de nav leva a um conteúdo genuinamente diferente:
             Dashboard (visão completa), Clientes (só a tabela, mais espaço) e
             Módulos (só os 5 cards de nicho). */}
-        <div className="flex items-center gap-4 px-8 py-5 border-b border-white/10">
-          <h1 className="text-lg font-bold">
+        <div className="flex items-center gap-3 px-6 py-5 border-b border-white/10">
+          <button onClick={() => setSidebarOpen((v) => !v)} title="Mostrar/ocultar menu"
+            className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors shrink-0">
+            <Menu className="w-4.5 h-4.5" />
+          </button>
+          <h1 className="text-lg font-bold shrink-0">
             {view === 'modulos' ? 'Configuração de Módulos' : view === 'clientes' ? 'Gestão de Clientes (Tenants)' : 'Dashboard'}
           </h1>
           {view !== 'modulos' && (
@@ -310,6 +320,19 @@ export default function DashboardPage() {
                 className="flex-1 bg-transparent text-sm outline-none placeholder:text-gray-500" />
             </div>
           )}
+          <div className="flex-1" />
+          <button disabled title="Cadastro de novo cliente cross-sistema — ainda não existe (cada sistema tem seu próprio signup)"
+            className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-violet-600/40 text-white/60 cursor-not-allowed shrink-0">
+            <Plus className="w-3.5 h-3.5" /> Novo Cliente
+          </button>
+          <button title={billingAlerts.length > 0 ? `${billingAlerts.length} loja(s) em atraso` : 'Nenhum alerta de faturamento'}
+            className="relative p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors shrink-0">
+            <Bell className="w-4.5 h-4.5" />
+            {billingAlerts.length > 0 && (
+              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500 ring-2 ring-[#0b0d12]" />
+            )}
+          </button>
+          <UserCircle2 className="w-8 h-8 text-gray-500 shrink-0" />
         </div>
 
         <div className="flex-1 overflow-y-auto px-8 py-6">
@@ -614,6 +637,9 @@ function TenantsTable({
   }
   return (
     <div className="rounded-2xl overflow-hidden border border-white/10" style={{ background: 'var(--surface)' }}>
+      <div className="px-5 py-3.5 border-b border-white/10">
+        <p className="text-sm font-bold">Clientes &amp; Empresas ({tenants.length})</p>
+      </div>
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-white/10 text-left text-gray-400">
@@ -675,6 +701,11 @@ function TenantsTable({
           )}
         </tbody>
       </table>
+      {tenants.length > 0 && (
+        <div className="px-5 py-3 border-t border-white/10 text-xs text-gray-500">
+          Mostrando {tenants.length} de {tenants.length}
+        </div>
+      )}
     </div>
   );
 }
@@ -699,8 +730,10 @@ function NicheGrid({ tenants, onConfigure }: { tenants: Tenant[]; onConfigure: (
               <button
                 onClick={() => onConfigure(m)}
                 disabled={!m.live}
-                className="w-full py-2 rounded-xl text-xs font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{ background: m.live ? m.color : 'rgba(255,255,255,0.08)' }}
+                className="w-full py-2 rounded-xl text-xs font-bold border transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                style={m.live
+                  ? { background: `${m.color}1f`, borderColor: `${m.color}66`, color: m.color }
+                  : { background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.4)' }}
               >
                 {m.live ? 'Configurar Módulo' : 'Em breve'}
               </button>
@@ -713,18 +746,48 @@ function NicheGrid({ tenants, onConfigure }: { tenants: Tenant[]; onConfigure: (
                 </li>
               ))}
             </ul>
-            <div className="mx-4 mb-3 rounded-lg p-2 flex items-end gap-1 h-12"
+            <div className="mx-4 mb-3 rounded-lg overflow-hidden h-16"
               style={{ background: `${m.color}14` }}
               title={m.key === 'SERVICOS' ? 'Sem sistema próprio ainda' : `Ativas ${statusCounts[0]} · Trial ${statusCounts[1]} · Atraso ${statusCounts[2]} · Bloqueadas ${statusCounts[3]}`}>
-              {statusCounts.map((v, i) => (
-                <div key={i} className="flex-1 rounded-sm transition-all"
-                  style={{ height: `${Math.max(14, (v / maxCount) * 100)}%`, background: v > 0 ? m.color : 'rgba(255,255,255,0.08)' }} />
-              ))}
+              <StatusAreaChart values={statusCounts} max={maxCount} color={m.color} />
             </div>
           </div>
         );
       })}
     </div>
+  );
+}
+
+/** Mini área/linha (Ativas/Trial/Atraso/Bloqueadas) — mesmo dado real do bar
+ * chart antigo, só com um traçado mais parecido com a referência (curva
+ * suave + preenchimento em gradiente) em vez de 4 retângulos secos. */
+function StatusAreaChart({ values, max, color }: { values: number[]; max: number; color: string }) {
+  const w = 100;
+  const h = 40;
+  const pad = 4;
+  const step = (w - pad * 2) / (values.length - 1);
+  const points = values.map((v, i) => {
+    const x = pad + i * step;
+    const y = h - pad - (v / max) * (h - pad * 2);
+    return [x, y];
+  });
+  const linePath = points.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x},${y}`).join(' ');
+  const areaPath = `${linePath} L${points[points.length - 1][0]},${h} L${points[0][0]},${h} Z`;
+  const gradId = `grad-${color.replace('#', '')}`;
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="w-full h-full">
+      <defs>
+        <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.55" />
+          <stop offset="100%" stopColor={color} stopOpacity="0.02" />
+        </linearGradient>
+      </defs>
+      <path d={areaPath} fill={`url(#${gradId})`} />
+      <path d={linePath} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+      {points.map(([x, y], i) => (
+        <circle key={i} cx={x} cy={y} r="2" fill={color} />
+      ))}
+    </svg>
   );
 }
 
