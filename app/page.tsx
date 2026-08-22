@@ -372,7 +372,7 @@ export default function DashboardPage() {
 
               {/* Linha de 5 nichos */}
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
-                {NICHE_MODULES.map((m) => {
+                {NICHE_MODULES.map((m, idx) => {
                   const statusCounts = (['ACTIVE', 'TRIAL', 'PAST_DUE', 'BLOCKED'] as const).map(
                     (st) => tenants.filter((t) => t.system === m.key && t.status === st).length,
                   );
@@ -381,7 +381,9 @@ export default function DashboardPage() {
                     <div key={m.key} className="rounded-2xl overflow-hidden border flex flex-col"
                       style={{ borderColor: `${m.color}55`, background: '#0e1015' }}>
                       <div className="px-4 py-3" style={{ background: m.color }}>
-                        <p className="text-white font-black text-xs uppercase tracking-wide truncate">{m.label}</p>
+                        <p className="text-white font-black text-xs uppercase tracking-tight leading-snug">
+                          {idx + 1}. {m.label}
+                        </p>
                       </div>
                       <div className="px-3 pt-3">
                         <button
@@ -392,19 +394,20 @@ export default function DashboardPage() {
                           {m.live ? 'Configurar Módulo' : 'Em breve'}
                         </button>
                       </div>
-                      <ul className="px-4 py-3 space-y-1.5 flex-1">
+                      <ul className="px-4 py-3 space-y-2 flex-1">
                         {m.features.map((f) => (
-                          <li key={f} className="text-[11px] text-gray-400 flex items-center gap-2">
-                            <span className="w-1 h-1 rounded-full shrink-0" style={{ background: m.color }} />
-                            <span className="truncate">{f}</span>
+                          <li key={f} className="text-[11px] text-gray-400 flex items-start gap-2 leading-snug">
+                            <span className="w-1 h-1 rounded-full shrink-0 mt-1.5" style={{ background: m.color }} />
+                            <span>{f}</span>
                           </li>
                         ))}
                       </ul>
-                      <div className="px-4 pb-3 flex items-end gap-1 h-7"
+                      <div className="mx-4 mb-3 rounded-lg p-2 flex items-end gap-1 h-12"
+                        style={{ background: `${m.color}14` }}
                         title={m.key === 'SERVICOS' ? 'Sem sistema próprio ainda' : `Ativas ${statusCounts[0]} · Trial ${statusCounts[1]} · Atraso ${statusCounts[2]} · Bloqueadas ${statusCounts[3]}`}>
                         {statusCounts.map((v, i) => (
-                          <div key={i} className="flex-1 rounded-sm"
-                            style={{ height: `${Math.max(10, (v / maxCount) * 100)}%`, background: v > 0 ? `${m.color}cc` : 'rgba(255,255,255,0.06)' }} />
+                          <div key={i} className="flex-1 rounded-sm transition-all"
+                            style={{ height: `${Math.max(14, (v / maxCount) * 100)}%`, background: v > 0 ? m.color : 'rgba(255,255,255,0.08)' }} />
                         ))}
                       </div>
                     </div>
