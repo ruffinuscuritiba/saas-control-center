@@ -37,7 +37,11 @@ const FOODSAAS_ADMIN_URL = 'https://food-system-sas-erp-frontend.vercel.app/supe
 // etc.), só abre a página real onde elas já existem, numa aba nova. Exige
 // estar logado no /super-admin/login do FoodSaaS pra funcionar (sessão
 // separada da do SCC) — mesmo padrão já usado na Central de Demonstrações.
-const FOODSAAS_SHORTCUTS: { label: string; href: string; icon: typeof Users }[] = [
+const FOODSAAS_SHORTCUTS: { label: string; href: string; icon: typeof Users; title?: string }[] = [
+  {
+    label: 'Dashboard FoodSaaS', href: `${FOODSAAS_ADMIN_URL}/dashboard`, icon: LayoutDashboard,
+    title: 'Abre o dashboard do FoodSaaS — "Ver demos", "Ver arquivadas" e "+ Novo restaurante" ficam lá (não são páginas separadas, são controles dessa mesma tela)',
+  },
   { label: 'Clientes', href: `${FOODSAAS_ADMIN_URL}/clientes`, icon: Users },
   { label: 'Leads', href: `${FOODSAAS_ADMIN_URL}/leads`, icon: UserPlus },
   { label: 'Módulos', href: `${FOODSAAS_ADMIN_URL}/modulos`, icon: Blocks },
@@ -334,7 +338,7 @@ export default function DashboardPage() {
             <div className="space-y-1">
               {FOODSAAS_SHORTCUTS.map((s) => (
                 <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer"
-                  title={`Abrir "${s.label}" no painel do FoodSaaS (aba nova)`}
+                  title={s.title ?? `Abrir "${s.label}" no painel do FoodSaaS (aba nova)`}
                   className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-gray-400 hover:text-white hover:bg-white/5 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[0_0_0_1px_rgba(255,255,255,0.35),0_4px_10px_rgba(0,0,0,0.45)]">
                   <s.icon className="w-4 h-4 shrink-0" />
                   <span className="truncate flex-1 text-left">{s.label}</span>
