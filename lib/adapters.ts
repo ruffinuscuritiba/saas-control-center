@@ -12,6 +12,7 @@ function getConfig(system: SystemKey): SystemConfig {
     SAUDE_BELEZA: 'SBE',
     OFICINA: 'OFICINA',
     MODA: 'MODA',
+    SERVICOS: 'SERVICOS',
   }[system];
 
   const baseUrl = process.env[`${prefix}_API_URL`];
@@ -56,6 +57,7 @@ const LOGIN_SPEC: Record<SystemKey, (cfg: SystemConfig) => { loginPath: string; 
   SAUDE_BELEZA: (cfg) => ({ loginPath: '/super-admin/login', loginBody: { email: cfg.email, password: cfg.password } }),
   OFICINA: (cfg) => ({ loginPath: '/auth/super-admin-login', loginBody: { email: cfg.email, senha: cfg.password } }),
   MODA: (cfg) => ({ loginPath: '/super-admin/login', loginBody: { email: cfg.email, password: cfg.password } }),
+  SERVICOS: (cfg) => ({ loginPath: '/super-admin/login', loginBody: { email: cfg.email, password: cfg.password } }),
 };
 
 async function apiCall(system: SystemKey, path: string, init?: RequestInit) {
@@ -306,12 +308,54 @@ async function impersonateModa(id: string): Promise<{ url: string }> {
   return { url };
 }
 
+// ─── SERVIÇOS ────────────────────────────────────────────────────────────────
+// Fase 1 do 5º nicho — backend próprio (Express+Prisma), mesmo contrato de
+// /super-admin/* já usado por Moda/SBE. Impersonate ainda não existe (sem
+// frontend tenant-facing nesta fase) — o backend responde 501 explícito.
+
+async function listServicos(): Promise<Tenant[]> {
+  const data = await apiCall('SERVICOS', '/super-admin/companies');
+  return (data as any[]).map((c) => ({
+    system: 'SERVICOS' as const,
+    id: c.id,
+    name: c.name,
+    nicho: 'Serviços',
+    status: c.isBlocked ? 'BLOCKED' : (c.subscriptionStatus === 'TRIAL' ? 'TRIAL' : c.subscriptionStatus === 'PAST_DUE' ? 'PAST_DUE' : 'ACTIVE'),
+    ownerName: c.owner?.name ?? null,
+    ownerEmail: c.owner?.email ?? null,
+    createdAt: toIso(c.createdAt),
+    counts: [
+      { label: 'clientes', value: c.clientsCount ?? 0 },
+      { label: 'projetos', value: c.projectsCount ?? 0 },
+    ],
+    monthlyRevenue: null,
+    canToggleBlock: true,
+    canResetPassword: true,
+    canImpersonate: false,
+    raw: c,
+  }));
+}
+
+async function toggleBlockServicos(id: string, currentlyBlocked: boolean): Promise<void> {
+  await apiCall('SERVICOS', `/super-admin/companies/${id}/block`, {
+    method: 'PATCH',
+    body: JSON.stringify({ isBlocked: !currentlyBlocked }),
+  });
+}
+
+async function resetPasswordServicos(id: string, newPassword: string): Promise<{ email: string }> {
+  return apiCall('SERVICOS', `/super-admin/companies/${id}/reset-owner-password`, {
+    method: 'PATCH',
+    body: JSON.stringify({ newPassword }),
+  });
+}
+
 // ─── API pública do módulo ──────────────────────────────────────────────────
 
 export async function listAllTenants() {
-  const systems: SystemKey[] = ['FOOD', 'SAUDE_BELEZA', 'OFICINA', 'MODA'];
+  const systems: SystemKey[] = ['FOOD', 'SAUDE_BELEZA', 'OFICINA', 'MODA', 'SERVICOS'];
   const listers: Record<SystemKey, () => Promise<Tenant[]>> = {
-    FOOD: listFood, SAUDE_BELEZA: listSaudeBeleza, OFICINA: listOficina, MODA: listModa,
+    FOOD: listFood, SAUDE_BELEZA: listSaudeBeleza, OFICINA: listOficina, MODA: listModa, SERVICOS: listServicos,
   };
 
   const results = await Promise.allSettled(systems.map((s) => listers[s]()));
@@ -331,6 +375,7 @@ export async function toggleBlock(system: SystemKey, id: string, currentlyBlocke
   if (system === 'SAUDE_BELEZA') return toggleBlockSaudeBeleza(id, currentlyBlocked);
   if (system === 'OFICINA') return toggleBlockOficina(id);
   if (system === 'MODA') return toggleBlockModa(id, currentlyBlocked);
+  if (system === 'SERVICOS') return toggleBlockServicos(id, currentlyBlocked);
 }
 
 export async function resetPassword(system: SystemKey, id: string, newPassword: string): Promise<{ email: string }> {
@@ -338,6 +383,7 @@ export async function resetPassword(system: SystemKey, id: string, newPassword: 
   if (system === 'SAUDE_BELEZA') return resetPasswordSaudeBeleza(id, newPassword);
   if (system === 'OFICINA') return resetPasswordOficina(id, newPassword);
   if (system === 'MODA') return resetPasswordModa(id, newPassword);
+  if (system === 'SERVICOS') return resetPasswordServicos(id, newPassword);
   throw new Error(`Reset de senha não suportado para ${system} ainda.`);
 }
 

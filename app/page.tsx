@@ -14,7 +14,7 @@ import {
 } from '@/lib/types';
 
 const TOKEN_KEY = 'scc_token';
-const SYSTEMS: SystemKey[] = ['FOOD', 'SAUDE_BELEZA', 'OFICINA', 'MODA'];
+const SYSTEMS: SystemKey[] = ['FOOD', 'SAUDE_BELEZA', 'OFICINA', 'MODA', 'SERVICOS'];
 
 type ViewKey = 'dashboard' | 'clientes' | 'modulos';
 
@@ -88,10 +88,10 @@ const NICHE_MODULES: NicheModule[] = [
     features: ['Agenda', 'Anamnese', 'Sessões/Pacotes', 'Profissionais'],
   },
   {
-    // "Em breve" de propósito — não existe sistema real de Serviços/
-    // Consultoria hoje (SYSTEMS só tem FOOD/SAUDE_BELEZA/OFICINA/MODA).
-    // Marcar live:true aqui abriria um módulo que nunca vai ter tenant.
-    key: 'SERVICOS', label: 'Serviços / Consultoria', color: '#00c853', icon: Briefcase, live: false, chartType: 'bar',
+    // Backend real desde 22/08/2026 (Fase 1: Client/Project/TimeEntry) —
+    // servicos-api.srv1747711.hstgr.cloud. Relatórios/Contratos formais
+    // ainda são Fase 2/3, mas o módulo já agrega tenants de verdade.
+    key: 'SERVICOS', label: 'Serviços / Consultoria', color: '#00c853', icon: Briefcase, live: true, chartType: 'bar',
     features: ['Gestão de Projetos', 'Horas', 'Relatórios', 'Contratos'],
   },
 ];

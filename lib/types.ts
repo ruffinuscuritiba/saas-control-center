@@ -1,17 +1,19 @@
-export type SystemKey = 'FOOD' | 'SAUDE_BELEZA' | 'OFICINA' | 'MODA';
+export type SystemKey = 'FOOD' | 'SAUDE_BELEZA' | 'OFICINA' | 'MODA' | 'SERVICOS';
 
 export const SYSTEM_LABEL: Record<SystemKey, string> = {
   FOOD: 'Food',
   SAUDE_BELEZA: 'Estética',
   OFICINA: 'Mecânica',
   MODA: 'Moda',
+  SERVICOS: 'Serviços',
 };
 
 export const SYSTEM_COLOR: Record<SystemKey, string> = {
-  FOOD: '#f97316',
-  SAUDE_BELEZA: '#a855f7',
-  OFICINA: '#3b82f6',
-  MODA: '#ef4444',
+  FOOD: '#ff8800',
+  SAUDE_BELEZA: '#a230ff',
+  OFICINA: '#0084ff',
+  MODA: '#ff2d55',
+  SERVICOS: '#00c853',
 };
 
 export type TenantStatus = 'ACTIVE' | 'TRIAL' | 'PAST_DUE' | 'BLOCKED';
