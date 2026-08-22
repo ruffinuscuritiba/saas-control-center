@@ -94,9 +94,18 @@ function frontendUrl(key: 'FOOD' | 'SBE' | 'OFICINA' | 'MODA'): string {
 
 // ─── FOOD ───────────────────────────────────────────────────────────────────
 
+// Contas de vitrine do FoodSaaS (demo-basic@foodsaas.demo, demo-pro@..., os
+// ~14 nichos de demo criados pro /demo público) — mesmo domínio usado pelo
+// próprio FoodSaaS (DEMO_EMAILS) pra excluir de métricas reais. Aqui contam
+// como "loja de mentira" pro dono do SaaS, não devem entrar em MRR/contagem/
+// tabela do painel unificado.
+const FOOD_DEMO_DOMAIN = '@foodsaas.demo';
+
 async function listFood(): Promise<Tenant[]> {
   const data = await apiCall('FOOD', '/super-admin/companies');
-  return (data as any[]).map((c) => {
+  return (data as any[])
+    .filter((c) => !String(c.email ?? '').toLowerCase().endsWith(FOOD_DEMO_DOMAIN))
+    .map((c) => {
     let status: TenantStatus = 'ACTIVE';
     if (c.isBlocked) status = 'BLOCKED';
     else if (c.subscriptionStatus === 'PENDING_PAYMENT' || c.subscriptionStatus === 'TRIAL') status = 'TRIAL';
