@@ -6,6 +6,7 @@ import {
   Search, Loader2, Ban, Play, KeyRound, ExternalLink, X, AlertTriangle,
   Wrench, Shirt, UtensilsCrossed, Sparkles, Briefcase, Rocket, Copy, MessageCircle,
   ChevronDown, Menu, Plus, Bell, UserCircle2,
+  UserPlus, LayoutTemplate, DollarSign, Eye, Sprout, PlayCircle, Bot, Store,
 } from 'lucide-react';
 import {
   SYSTEM_LABEL, SYSTEM_COLOR, STATUS_LABEL, STATUS_COLOR,
@@ -27,6 +28,28 @@ const DISABLED_NAV = [
   { key: 'planos', label: 'Planos & Cobrança', icon: CreditCard },
   { key: 'suporte', label: 'Suporte', icon: LifeBuoy },
   { key: 'logs', label: 'Logs do Sistema', icon: ScrollText },
+];
+
+const FOODSAAS_ADMIN_URL = 'https://food-system-sas-erp-frontend.vercel.app/super-admin';
+
+// Atalhos reais pro painel próprio do FoodSaaS — SCC não replica essas
+// ferramentas (Leads, Construtor de layout, Preços, Visitas, seed de demo,
+// etc.), só abre a página real onde elas já existem, numa aba nova. Exige
+// estar logado no /super-admin/login do FoodSaaS pra funcionar (sessão
+// separada da do SCC) — mesmo padrão já usado na Central de Demonstrações.
+const FOODSAAS_SHORTCUTS: { label: string; href: string; icon: typeof Users }[] = [
+  { label: 'Clientes', href: `${FOODSAAS_ADMIN_URL}/clientes`, icon: Users },
+  { label: 'Leads', href: `${FOODSAAS_ADMIN_URL}/leads`, icon: UserPlus },
+  { label: 'Módulos', href: `${FOODSAAS_ADMIN_URL}/modulos`, icon: Blocks },
+  { label: 'Construtor', href: `${FOODSAAS_ADMIN_URL}/construtor`, icon: LayoutTemplate },
+  { label: 'Preços', href: `${FOODSAAS_ADMIN_URL}/pricing`, icon: DollarSign },
+  { label: 'Visitas', href: `${FOODSAAS_ADMIN_URL}/visitas`, icon: Eye },
+  // Estes 4 são botões DENTRO do dashboard do FoodSaaS (não têm rota
+  // própria) — abrem o dashboard, o clique real acontece lá.
+  { label: 'Seed Demo', href: `${FOODSAAS_ADMIN_URL}/dashboard`, icon: Sprout },
+  { label: 'Init Demos', href: `${FOODSAAS_ADMIN_URL}/dashboard`, icon: PlayCircle },
+  { label: 'Configurar IA', href: `${FOODSAAS_ADMIN_URL}/dashboard`, icon: Bot },
+  { label: 'Minha Loja', href: `${FOODSAAS_ADMIN_URL}/dashboard`, icon: Store },
 ];
 
 // ─── Módulos por nicho ───────────────────────────────────────────────────
@@ -302,6 +325,22 @@ export default function DashboardPage() {
                 <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-gray-500">em breve</span>
               </button>
             ))}
+          </div>
+
+          {/* Atalhos reais pro painel próprio do FoodSaaS — abrem em aba
+              nova, exigem sessão do /super-admin/login do FoodSaaS. */}
+          <div className="pt-3 mt-3 border-t border-white/5">
+            <p className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-wide text-gray-500">FoodSaaS</p>
+            <div className="space-y-1">
+              {FOODSAAS_SHORTCUTS.map((s) => (
+                <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer"
+                  title={`Abrir "${s.label}" no painel do FoodSaaS (aba nova)`}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-gray-400 hover:text-white hover:bg-white/5 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[0_0_0_1px_rgba(255,255,255,0.35),0_4px_10px_rgba(0,0,0,0.45)]">
+                  <s.icon className="w-4 h-4 shrink-0" />
+                  <span className="truncate flex-1 text-left">{s.label}</span>
+                </a>
+              ))}
+            </div>
           </div>
         </nav>
         <div className="p-3 border-t border-white/10 w-64">
